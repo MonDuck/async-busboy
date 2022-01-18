@@ -1,3 +1,7 @@
+/*
+ * Fixing node 16 hangs.
+ */
+
 'use strict';
 
 const Busboy = require('busboy');
@@ -10,7 +14,8 @@ const getDescriptor = Object.getOwnPropertyDescriptor;
 module.exports = function (request, options) {
   options = options || {};
   options.headers = options.headers || request.headers;
-  const customOnFile = typeof options.onFile === "function" ? options.onFile : false;
+  const customOnFile =
+    typeof options.onFile === 'function' ? options.onFile : false;
   delete options.onFile;
   const busboy = new Busboy(options);
 
@@ -27,7 +32,7 @@ module.exports = function (request, options) {
       .on('end', onEnd)
       .on('finish', onEnd);
 
-    busboy.on('partsLimit', function(){
+    busboy.on('partsLimit', function () {
       const err = new Error('Reach parts limit');
       err.code = 'Request_parts_limit';
       err.status = 413;
@@ -56,7 +61,7 @@ module.exports = function (request, options) {
     }
 
     function onEnd(err) {
-      if(err) {
+      if (err) {
         return reject(err);
       }
       if (customOnFile) {
@@ -66,7 +71,7 @@ module.exports = function (request, options) {
         Promise.all(filePromises)
           .then((files) => {
             cleanup();
-            resolve({fields, files});
+            resolve({ fields, files });
           })
           .catch(reject);
       }
@@ -94,7 +99,6 @@ function onField(fields, name, val, fieldnameTruncated, valTruncated) {
   if (name.indexOf('[') > -1) {
     const obj = objectFromBluePrint(extractFormData(name), val);
     reconcile(obj, fields);
-
   } else {
     if (fields.hasOwnProperty(name)) {
       if (Array.isArray(fields[name])) {
@@ -109,29 +113,30 @@ function onField(fields, name, val, fieldnameTruncated, valTruncated) {
 }
 
 function onFile(filePromises, fieldname, file, filename, encoding, mimetype) {
-  const tmpName = file.tmpName = Math.random().toString(16).substring(2) + '-' + filename;
+  const tmpName = (file.tmpName =
+    Math.random().toString(16).substring(2) + '-' + filename);
   const saveTo = path.join(os.tmpdir(), path.basename(tmpName));
   const writeStream = fs.createWriteStream(saveTo);
 
-  const filePromise = new Promise((resolve, reject) => writeStream
-    .on('open', () => file
-      .pipe(writeStream)
-      .on('error', reject)
-      .on('finish', () => {
-        const readStream = fs.createReadStream(saveTo);
-        readStream.fieldname = fieldname;
-        readStream.filename = filename;
-        readStream.transferEncoding = readStream.encoding = encoding;
-        readStream.mimeType = readStream.mime = mimetype;
-        resolve(readStream);
-      })
-    )
-    .on('error', (err) => {
-      file
-        .resume()
-        .on('error', reject);
-      reject(err);
-    })
+  const filePromise = new Promise((resolve, reject) =>
+    writeStream
+      .on('open', () =>
+        file
+          .pipe(writeStream)
+          .on('error', reject)
+          .on('finish', () => {
+            const readStream = fs.createReadStream(saveTo);
+            readStream.fieldname = fieldname;
+            readStream.filename = filename;
+            readStream.transferEncoding = readStream.encoding = encoding;
+            readStream.mimeType = readStream.mime = mimetype;
+            resolve(readStream);
+          }),
+      )
+      .on('error', (err) => {
+        file.resume().on('error', reject);
+        reject(err);
+      }),
   );
   filePromises.push(filePromise);
 }
@@ -150,7 +155,7 @@ function onFile(filePromises, fieldname, file, filename, encoding, mimetype) {
 const extractFormData = (string) => {
   const arr = string.split('[');
   const first = arr.shift();
-  const res = arr.map( v => v.split(']')[0] );
+  const res = arr.map((v) => v.split(']')[0]);
   res.unshift(first);
   return res;
 };
@@ -167,17 +172,15 @@ const extractFormData = (string) => {
  *
  */
 const objectFromBluePrint = (arr, value) => {
-  return arr
-    .reverse()
-    .reduce((acc, next) => {
-      if (Number(next).toString() === 'NaN') {
-        return {[next]: acc};
-      } else {
-        const newAcc = [];
-        newAcc[ Number(next) ] = acc;
-        return newAcc;
-      }
-    }, value);
+  return arr.reverse().reduce((acc, next) => {
+    if (Number(next).toString() === 'NaN') {
+      return { [next]: acc };
+    } else {
+      const newAcc = [];
+      newAcc[Number(next)] = acc;
+      return newAcc;
+    }
+  }, value);
 };
 
 /**
@@ -200,7 +203,6 @@ const reconcile = (obj, target) => {
   if (target.hasOwnProperty(key)) {
     return reconcile(val, target[key]);
   } else {
-    return target[key] = val;
+    return (target[key] = val);
   }
-
 };
