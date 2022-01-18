@@ -9,6 +9,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const debug = require('debug');
+
+const d = debug('monduck:asyncBusboy');
+
 const getDescriptor = Object.getOwnPropertyDescriptor;
 
 module.exports = function (request, options) {
@@ -23,12 +27,13 @@ module.exports = function (request, options) {
     const fields = {};
     const filePromises = [];
 
-    request.on('close', cleanup);
+    // request.on('close', cleanup);
 
     busboy
       .on('field', onField.bind(null, fields))
       .on('file', customOnFile || onFile.bind(null, filePromises))
       .on('error', onError)
+      // .on('close', cleanup)
       .on('end', onEnd)
       .on('finish', onEnd);
 
@@ -78,6 +83,8 @@ module.exports = function (request, options) {
     }
 
     function cleanup() {
+      d('Clean up is called');
+
       busboy.removeListener('field', onField);
       busboy.removeListener('file', customOnFile || onFile);
       busboy.removeListener('close', cleanup);
